@@ -1,0 +1,107 @@
+﻿@page
+@{
+	Layout = null;
+}
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>SignalR聊天室</title>
+</head>
+<body>
+	聊天室：
+	<select id="group">
+		<option value="">选择聊天室</option>
+		<option value="1">活动1聊天室</option>
+		<option value="2">活动2聊天室</option>
+		<option value="3">活动3聊天室</option>
+	</select>
+	<div>
+		Id<input type="text" value="" id="myid" />
+		用户名<input type="text" value="" id="myname" />
+		<input type="button" value="登陆" id="login" />
+	</div>
+	<input type="text" value="" id="mymsg" />
+	<input type="button" value="发送" id="send" />
+	<div>聊天记录</div>
+	<div id="msg">
+	</div>
+	<script src="~/lib/jquery/dist/jquery.js"></script>
+	<script src="~/js/signalr/dist/browser/signalr.js"></script>
+	<script>
+		//链接配置
+		const connection = new signalR.HubConnectionBuilder()
+			.withUrl("/WebChatHub")
+			.configureLogging(signalR.LogLevel.Information)
+			.build();
+		// Start the connection.
+		start();
+		//链接
+		async function start() {
+			try {
+				await connection.start();
+				console.log("SignalR 链接成功.");
+			} catch (err) {
+				console.log(err);
+				setTimeout(start, 5000);
+			}
+		};
+
+		//自动重试链接
+		connection.onclose(async () => {
+			await start();
+		});
+
+		//用户登陆
+		$("#login").click(function () {
+			connection.invoke("LoginBind", $("#group").val(), $("#myid").val(), $("#myname").val()); //群组  id 用户名
+		})
+
+		//发送群组消息
+		$("#send").click(function () {
+			//给指定群组发
+			connection.invoke("SendGroupMessage", $("#group").val(), $("#mymsg").val());
+
+			//给所有人发
+			// connection.invoke("SendALLMessage", $("#mymsg").val());
+
+			//给指定connectionid发
+			// connection.invoke("SendToMessage","connectionid",$("#mymsg").val());
+
+			//给指定登陆用户id发
+			// connection.invoke("SendLoginMessage", "用户id",$("#mymsg").val());
+		})
+
+		//获取个人反馈
+		connection.on("ReturnConId", (data) => {
+			var json = JSON.parse(data);
+			console.log(json)
+
+		});
+
+		//监控对应群组频道
+		$("#group").change(function () {
+			if ($("#group").val() != "") {
+				connection.on("ReceiveMessage" + $("#group").val(), (data) => {
+					var json = JSON.parse(data);
+					if (json.code == 200) {
+						var html = "<div>" + json.data.Name + "说：" + json.data.Msg + "</div>"
+						$("#msg").append(html);
+					} else {
+						console.log(json)
+					}
+				});
+			}
+		})
+
+		//人员上线，下线监控
+		connection.on("SystemNotice", (data) => {
+			var json = JSON.parse(data);
+			console.log(json)
+		});
+
+		//监听全体信息
+		connection.on("ReceiveMessage", (data) => {
+			var json = JSON.parse(data);
+			console.log(json)
+		});
+	</script>
+</body>
