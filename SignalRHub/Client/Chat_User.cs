@@ -12,31 +12,32 @@ namespace SignalRHub
     public static class Chat_User
     {
         public static List<U_Info> userList = new List<U_Info>();
-        /// <summary>
-        /// 添加用户
-        /// </summary>
-        /// <param name="loginId"></param>
-        /// <param name="connectionid"></param>
-        /// <param name="name"></param>
-        /// <param name="group"></param>
-        public static void AddUser(string loginId, string connectionid, string name, string group)
+        public static List<U_Info> Users { get; set; }
+	/// <summary>
+	/// 添加用户
+	/// </summary>
+	/// <param name="loginId"></param>
+	/// <param name="connectionid"></param>
+	/// <param name="name"></param>
+	/// <param name="group"></param>
+	public static void AddUser(string loginId, string connectionid, string name, string group)
         {
-            var list = userList.Where(t => t.Connectionid == connectionid).ToList();
-            if (list!=null && list.Count>0)
-            {
-                for (int i = 0; i < userList.Count; i++)
-                {
-                    if (userList[i].Connectionid == connectionid)
-                    {
-                        userList[i].LoginId = loginId;
-                        userList[i].LoginName = name;
-                        userList[i].LoginName = group;
-                    }
-                }
-            }
-            else
-                userList.Add(new U_Info(loginId, connectionid, name, group));
-        }
+			var list = userList.Where(t => t.Connectionid == connectionid).ToList();
+			if (list != null && list.Count > 0)
+			{
+				for (int i = 0; i < userList.Count; i++)
+				{
+					if (userList[i].Connectionid == connectionid)
+					{
+						userList[i].LoginId = loginId;
+						userList[i].LoginName = name;
+						userList[i].group = group;
+					}
+				}
+			}
+			else
+				userList.Add(new U_Info(loginId, connectionid, name, group));
+		}
 		/// <summary>
 		/// 移除用户
 		/// </summary>
@@ -53,12 +54,18 @@ namespace SignalRHub
                 }
             }
         }
-    }
 
-    /// <summary>
-    /// 用户缓存
-    /// </summary>
-    public class U_Info
+        public static List<U_Info> GetUserList()
+		{
+            Users = userList;
+            return Users;
+        }
+	}
+
+	/// <summary>
+	/// 用户缓存
+	/// </summary>
+	public class U_Info
     {
         public U_Info(string id, string cid, string loginName, string _group)
         {

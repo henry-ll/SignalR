@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
 			this.txtLoginId = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
@@ -48,12 +49,17 @@
 			this.label7 = new System.Windows.Forms.Label();
 			this.txtLoginName = new System.Windows.Forms.TextBox();
 			this.btnLogOut = new System.Windows.Forms.Button();
+			this.btnChatRoomSend = new System.Windows.Forms.Button();
+			this.cmbConnectionId = new System.Windows.Forms.ComboBox();
+			this.cmbUserId = new System.Windows.Forms.ComboBox();
+			this.timer1 = new System.Windows.Forms.Timer(this.components);
 			this.SuspendLayout();
 			// 
 			// txtLoginId
 			// 
 			this.txtLoginId.Location = new System.Drawing.Point(244, 12);
 			this.txtLoginId.Name = "txtLoginId";
+			this.txtLoginId.ReadOnly = true;
 			this.txtLoginId.Size = new System.Drawing.Size(269, 23);
 			this.txtLoginId.TabIndex = 0;
 			// 
@@ -73,7 +79,7 @@
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(56, 17);
 			this.label2.TabIndex = 3;
-			this.label2.Text = "登陆结果";
+			this.label2.Text = "监听结果";
 			// 
 			// txtLoginResult
 			// 
@@ -104,7 +110,7 @@
 			// 
 			// txtConnectionId
 			// 
-			this.txtConnectionId.Location = new System.Drawing.Point(95, 116);
+			this.txtConnectionId.Location = new System.Drawing.Point(95, 64);
 			this.txtConnectionId.Name = "txtConnectionId";
 			this.txtConnectionId.Size = new System.Drawing.Size(259, 23);
 			this.txtConnectionId.TabIndex = 5;
@@ -112,7 +118,7 @@
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(381, 119);
+			this.label4.Location = new System.Drawing.Point(437, 119);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(44, 17);
 			this.label4.TabIndex = 8;
@@ -120,7 +126,7 @@
 			// 
 			// txtUserId
 			// 
-			this.txtUserId.Location = new System.Drawing.Point(441, 115);
+			this.txtUserId.Location = new System.Drawing.Point(437, 64);
 			this.txtUserId.Name = "txtUserId";
 			this.txtUserId.Size = new System.Drawing.Size(259, 23);
 			this.txtUserId.TabIndex = 7;
@@ -144,7 +150,7 @@
 			// 
 			// button2
 			// 
-			this.button2.Location = new System.Drawing.Point(793, 197);
+			this.button2.Location = new System.Drawing.Point(793, 207);
 			this.button2.Name = "button2";
 			this.button2.Size = new System.Drawing.Size(178, 23);
 			this.button2.TabIndex = 11;
@@ -164,7 +170,7 @@
 			// 
 			// btnAllSend
 			// 
-			this.btnAllSend.Location = new System.Drawing.Point(793, 151);
+			this.btnAllSend.Location = new System.Drawing.Point(792, 148);
 			this.btnAllSend.Name = "btnAllSend";
 			this.btnAllSend.Size = new System.Drawing.Size(178, 23);
 			this.btnAllSend.TabIndex = 13;
@@ -226,11 +232,47 @@
 			this.btnLogOut.UseVisualStyleBackColor = true;
 			this.btnLogOut.Click += new System.EventHandler(this.btnLogOut_Click);
 			// 
+			// btnChatRoomSend
+			// 
+			this.btnChatRoomSend.Location = new System.Drawing.Point(792, 177);
+			this.btnChatRoomSend.Name = "btnChatRoomSend";
+			this.btnChatRoomSend.Size = new System.Drawing.Size(178, 23);
+			this.btnChatRoomSend.TabIndex = 20;
+			this.btnChatRoomSend.Text = "给所在聊天室发消息";
+			this.btnChatRoomSend.UseVisualStyleBackColor = true;
+			this.btnChatRoomSend.Click += new System.EventHandler(this.btnChatRoomSend_Click);
+			// 
+			// cmbConnectionId
+			// 
+			this.cmbConnectionId.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.cmbConnectionId.FormattingEnabled = true;
+			this.cmbConnectionId.Location = new System.Drawing.Point(95, 113);
+			this.cmbConnectionId.Name = "cmbConnectionId";
+			this.cmbConnectionId.Size = new System.Drawing.Size(315, 25);
+			this.cmbConnectionId.TabIndex = 21;
+			// 
+			// cmbUserId
+			// 
+			this.cmbUserId.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.cmbUserId.FormattingEnabled = true;
+			this.cmbUserId.Location = new System.Drawing.Point(487, 113);
+			this.cmbUserId.Name = "cmbUserId";
+			this.cmbUserId.Size = new System.Drawing.Size(315, 25);
+			this.cmbUserId.TabIndex = 22;
+			// 
+			// timer1
+			// 
+			this.timer1.Interval = 1000;
+			this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(983, 531);
+			this.Controls.Add(this.cmbUserId);
+			this.Controls.Add(this.cmbConnectionId);
+			this.Controls.Add(this.btnChatRoomSend);
 			this.Controls.Add(this.btnLogOut);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.txtLoginName);
@@ -283,5 +325,9 @@
 		private Label label7;
 		private TextBox txtLoginName;
 		private Button btnLogOut;
+		private Button btnChatRoomSend;
+		private ComboBox cmbConnectionId;
+		private ComboBox cmbUserId;
+		private System.Windows.Forms.Timer timer1;
 	}
 }

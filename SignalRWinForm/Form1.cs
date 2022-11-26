@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Windows.Forms;
 using Newtonsoft.Json;
-using static SignalRHub.Web.WebChatHub;
 using SignalRHub.Web;
 using SignalRHub;
+using Microsoft.VisualBasic.ApplicationServices;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace SignalRWinForm
 {
@@ -15,8 +16,8 @@ namespace SignalRWinForm
 			InitializeComponent();
 		}
 
-		private string txtLoginIdText;
-
+		private bool IsDisConnect = false;
+		private List<User> userList = new List<User>();
 		#region 事件绑定
 		private void Form1_Load(object sender, EventArgs e)
 		{
@@ -31,74 +32,85 @@ namespace SignalRWinForm
 			connection.Closed += async (error) =>
 			{
 				await Task.Delay(new Random().Next(0, 5) * 1000);
-				await connection.StartAsync();
-				try
+				if (!IsDisConnect)
 				{
-					var comboBox = (ComboBoxData)comboBox1.SelectedItem;
-					await connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
-					this.Invoke(() =>
+					await connection.StartAsync();
+					try
 					{
-						listBox1.Items.Add("【状态】 重新连接中...");
-					});
-				}
-				catch (Exception ex)
-				{
-					MessageBox.Show(ex.Message);
+						var comboBox = (ComboBoxData)comboBox1.SelectedItem;
+						await connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
+						this.Invoke(() =>
+						{
+							listBox1.Items.Add("【状态】 重新连接中...");
+						});
+					}
+					catch (Exception ex)
+					{
+						MessageBox.Show(ex.Message);
+					}
 				}
 			};
 			#endregion
 
-			#region 全局广播 监听
-			//监听聊天室（1）消息
-			connection.On<string>("ReceiveMessage1", (message) =>
+			#region 聊天室消息 监听
+			//监听 聊天室 消息
+			connection.On<string>("ReceiveMessage", (message) =>
 			{
+				var messageType = "【未知】";
 				var result = JsonConvert.DeserializeObject<Msg_code>(message);
-				var user = Chat_User.userList.Where(t => t.LoginId == txtLoginIdText).FirstOrDefault();
+				dynamic data = result.data;
+				if (data.group=="0")
+					messageType = $"【聊天室| 全体消息】 ";
+				else
+					messageType = $"【聊天室（{data.group}）】 ";
 				this.Invoke(() =>
 				{
-					if (user!=null)
-						listBox1.Items.Add("【聊天室（1）| 全体消息】" + result.Msg);
+					listBox1.Items.Add(messageType + data.Name + $"：{result.Msg}");
 				});
 			});
-			//监听聊天室（2）消息
-			connection.On<string>("ReceiveMessage2", (message) =>
-			{
-				this.Invoke(() =>
-				{
-					var result = JsonConvert.DeserializeObject<Msg_code>(message);
-					listBox1.Items.Add("【聊天室（2）| 全体消息】" + result.Msg);
-				});
-			});
-			//监听聊天室（3）消息
-			connection.On<string>("ReceiveMessage3", (message) =>
-			{
-				this.Invoke(() =>
-				{
-					var result = JsonConvert.DeserializeObject<Msg_code>(message);
-					listBox1.Items.Add("【聊天室（3）| 全体消息】" + result.Msg);
-				});
-			});
-
 			#endregion
 
-			#region 登陆结果 监听
-			connection.On<string>("ReturnConId", (message) =>
+			#region 【状态】消息 监听
+			connection.On<string>("StateMessage", (message) =>
 			{
+				var result = JsonConvert.DeserializeObject<Msg_code>(message);
+				dynamic data = result.data;
 				this.Invoke(() =>
 				{
 					txtLoginResult.Text = message;
-					var result = JsonConvert.DeserializeObject<Msg_code>(message);
+
+					if (result.code == 205)//登录
+					{
+						cmbConnectionId.DataSource = result.uInfo;
+						cmbConnectionId.ValueMember = "ConnectionId";
+						cmbConnectionId.DisplayMember = "LoginName";
+						cmbUserId.DataSource = result.uInfo;
+						cmbUserId.ValueMember = "LoginId";
+						cmbUserId.DisplayMember = "LoginName";
+					}
+					else if (result.code == 206)//注销登录
+					{
+						cmbConnectionId.DataSource = result.uInfo;
+						cmbConnectionId.ValueMember = "ConnectionId";
+						cmbConnectionId.DisplayMember = "LoginName";
+						cmbUserId.DataSource = result.uInfo;
+						cmbUserId.ValueMember = "LoginId";
+						cmbUserId.DisplayMember = "LoginName";
+					}
 					listBox1.Items.Add("【状态】 " + result.Msg);
 				});
 			});
 			#endregion
 
-			#region 接收个人信息
-			connection.On<string, string>("ReceiveMsg", (ConnectionId, message) =>
+			#region ConnectionId个人信息 监听
+			connection.On<string>("ReceiveMsg", (message) =>
 			{
+				var result = JsonConvert.DeserializeObject<Msg_code>(message);
+				dynamic data = result.data;
+				var messageType = "【私聊】";
 				this.Invoke(() =>
 				{
-					listBox1.Items.Add(ConnectionId + ":" + message);
+					listBox1.Items.Add(messageType+ data.SendName+"  对  "+ data.ReceiveName +"说："+result.Msg);
 				});
 			});
 			#endregion
@@ -113,9 +125,23 @@ namespace SignalRWinForm
 			});
 			#endregion
 
-			#endregion
 
-			connection.StartAsync();
+			#region 在线用户 监听
+			connection.On<string>("OnlineUser", (message) =>
+			{
+				var result = JsonConvert.DeserializeObject<Msg_code>(message);
+				this.Invoke(() =>
+				{
+					cmbConnectionId.DataSource = result.uInfo;
+					cmbConnectionId.ValueMember = "ConnectionId";
+					cmbConnectionId.DisplayMember = "LoginName";
+					cmbUserId.DataSource = result.uInfo;
+					cmbUserId.ValueMember = "LoginId";
+					cmbUserId.DisplayMember = "LoginName";
+				});
+			});
+			#endregion
+			#endregion
 		}
 		/// <summary>
 		/// 登录 点击事件
@@ -126,18 +152,24 @@ namespace SignalRWinForm
 		{
 			try
 			{
-				txtLoginIdText = this.txtLoginId.Text;
+				if (string.IsNullOrWhiteSpace(this.txtLoginName.Text))
+				{
+					MessageBox.Show("请输入用户名！");
+					return;
+				}
+				IsDisConnect = false;
+				connection.StartAsync();
 				var comboBox = (ComboBoxData)comboBox1.SelectedItem;
 				connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
+				this.btnLogin.Enabled = false;
+				this.comboBox1.Enabled = false;
+				this.txtLoginName.Enabled = false;
+				return;
 			}
 			catch (Exception ex)
 			{
 				MessageBox.Show(ex.Message);
 			}
-			this.btnLogin.Enabled = false;
-			this.comboBox1.Enabled = false;
-			this.txtLoginId.Enabled = false;
-			this.txtLoginName.Enabled = false;
 		}
 		/// <summary>
 		/// 注销登录 点击事件
@@ -146,19 +178,21 @@ namespace SignalRWinForm
 		/// <param name="e"></param>
 		private void btnLogOut_Click(object sender, EventArgs e)
 		{
-			//try
-			//{
-			//	var comboBox = (ComboBoxData)comboBox1.SelectedItem;
-			//	connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
-			//}
-			//catch (Exception ex)
-			//{
-			//	MessageBox.Show(ex.Message);
-			//}
-			this.btnLogin.Enabled = true;
-			this.comboBox1.Enabled = true;
-			this.txtLoginId.Enabled = true;
-			this.txtLoginName.Enabled = true;
+			try
+			{
+				IsDisConnect = true;
+				var comboBox = (ComboBoxData)comboBox1.SelectedItem;
+				connection.InvokeAsync("LoginDisConnect", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text).Wait();
+				connection.StopAsync();
+				this.btnLogin.Enabled = true;
+				this.comboBox1.Enabled = true;
+				this.txtLoginId.Enabled = true;
+				this.txtLoginName.Enabled = true;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
 		}
 		/// <summary>
 		/// 给ConnectionId发消息 点击事件
@@ -169,9 +203,7 @@ namespace SignalRWinForm
 		{
 			try
 			{
-				#region ConnectionId发送个人信息
-				connection.InvokeAsync("SendToMessage", txtConnectionId.Text, txtMessage.Text);
-				#endregion
+				connection.InvokeAsync("SendConnectionIdMessage", txtConnectionId.Text, txtMessage.Text).Wait();
 			}
 			catch (Exception ex)
 			{
@@ -205,20 +237,48 @@ namespace SignalRWinForm
 		{
 			try
 			{
-				#region 发送全体广播
-				connection.InvokeAsync("SendAllMessage",
-					 txtMessage.Text);
-				#endregion
+				if (string.IsNullOrWhiteSpace(this.txtMessage.Text))
+				{
+					MessageBox.Show("请输入消息内容！");
+					return;
+				}
+				connection.InvokeAsync("SendAllMessage",this.txtMessage.Text).Wait();
 			}
 			catch (Exception ex)
 			{
 				listBox1.Items.Add(ex.Message);
 			}
 		}
+		/// <summary>
+		/// 给所在聊天室发送消息
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void btnChatRoomSend_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(this.txtMessage.Text))
+				{
+					MessageBox.Show("请输入消息内容！");
+					return;
+				}
+				var comboBox = (ComboBoxData)comboBox1.SelectedItem;
+				connection.InvokeAsync("SendGroupMessage", comboBox.Id, this.txtMessage.Text).Wait();
+			}
+			catch (Exception ex)
+			{
+				listBox1.Items.Add(ex.Message);
+			}
+		}
+		private void timer1_Tick(object sender, EventArgs e)
+		{
+			connection.InvokeAsync("GetOnlineUser").Wait();
+		}
 		#endregion
 
 		#region 方法
-        /// <summary>
+		/// <summary>
 		/// 下拉框 绑定数据源
 		/// </summary>
 		private void bindCbox()
@@ -240,5 +300,13 @@ namespace SignalRWinForm
 	{
 		public string Id { get; set; }
 		public string Name { get; set; }
+	}
+	public class User
+	{
+		public string ConnectionId { get; set; }
+		public string UserId { get; set; }
+		public string ConnectionIdName { get; set; }
+		public string UserIdName { get; set; }
+		public string group { get; set; }
 	}
 }

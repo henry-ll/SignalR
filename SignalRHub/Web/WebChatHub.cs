@@ -19,7 +19,61 @@ namespace SignalRHub.Web
 		}
 
 		/// <summary>
-		/// 用户登陆 上线用户绑定id号  返回唯一标识id
+		/// 获取当前在线用户列表
+		/// </summary>
+		/// <returns></returns>
+		public async Task GetOnlineUser()
+		{
+			Msg_code code = new Msg_code();
+			try
+			{
+				code = new Msg_code(205, "获取成功", null, Chat_User.userList);
+				await Clients.All.SendAsync("OnlineUser", code.ToJson());
+				return;
+			}
+			catch (Exception ex)
+			{
+				code = new Msg_code(500, "获取在线用户列表失败");
+				await Clients.Client(Context.ConnectionId).SendAsync("OnlineUser", code.ToJson());
+				return;
+			}
+		}
+
+
+		/// <summary>
+		/// 注销登录
+		/// </summary>
+		/// <param name="group">聊天室Id</param>
+		/// <param name="loginId">登录Id（用户Id）</param>
+		/// <param name="username">用户名</param>
+		/// <returns></returns>
+		public async Task LoginDisConnect(string group, string loginId, string username)
+		{
+			Msg_code code = new Msg_code();
+			try
+			{
+				Chat_User.RemoveUser(Context.ConnectionId);
+				var data = new
+				{
+					ConnectionId = Context.ConnectionId,
+					UserId = loginId,
+					Name = username,
+					group = group,
+				};
+				code = new Msg_code(206, "用户：" + username + $"，退出登录",data);
+				await Clients.All.SendAsync("StateMessage", code.ToJson());
+				return;
+			}
+			catch (Exception ex)
+			{
+				code = new Msg_code(500, "出现异常");
+				await Clients.All.SendAsync("StateMessage", code.ToJson());
+				return;
+			}
+		}
+
+		/// <summary>
+		/// 用户登陆
 		/// </summary>
 		/// <param name="group">聊天室Id</param>
 		/// <param name="loginId">登录Id（用户Id）</param>
@@ -32,31 +86,26 @@ namespace SignalRHub.Web
 			{
 				//将用户添加到缓存
 				Chat_User.AddUser(loginId, Context.ConnectionId, username, group);
-				var data = new 
+				var data = new
 				{
 					ConnectionId = Context.ConnectionId,
 					UserId = loginId,
 					Name = username,
 					group = group,
 				};
-				code = new Msg_code(200, "登陆成功", data);
-				await Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
+				code = new Msg_code(205, "登陆成功", data, Chat_User.userList);
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
 
-				var receiveMessage = "ReceiveMessage" + group;
-				code = new Msg_code(201, "用户：" +username + "，加入聊天室", data);
-				await Clients.All.SendAsync(receiveMessage, code.ToJson());
-
+				code = new Msg_code(201, $"加入聊天室（{group}）", data);
+				await Clients.All.SendAsync("ReceiveMessage", code.ToJson());
 				return;
-
 			}
 			catch (Exception ex)
 			{
 				code = new Msg_code(500, "登陆失败");
-				await Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
 				return;
 			}
-
-
 		}
 
 		/// <summary>
@@ -64,132 +113,14 @@ namespace SignalRHub.Web
 		/// </summary>
 		/// <param name="msg">消息内容</param>
 		/// <returns></returns>
-		public Task SendAllMessage(string msg)
+		public async Task SendAllMessage(string msg)
 		{
 			Msg_code code = new Msg_code();
-			var user = getUserinfo();
+			var user = GetUserinfo();
 			if (user == null)
 			{
 				code = new Msg_code(500, "登陆已失效,请重新登陆");
-				return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-			}
-			msg = pbstr(msg);
-			var data = new
-			{
-				ConnectionId = Context.ConnectionId,
-				UserId = user.LoginId,
-				Name = user.LoginName,
-				Msg = msg
-			};
-			code = new Msg_code(200, "发送成功", data);
-			return Clients.All.SendAsync("ReceiveMessage", user.LoginName, msg);
-		}
-
-
-		//发送消息--发送特定组发信息
-		public Task SendGroupMessage(string group, string msg)
-		{
-			Msg_code code = new Msg_code();
-			try
-			{
-
-				if (string.IsNullOrWhiteSpace(msg))
-				{
-					code = new Msg_code(500, "消息不能为空");
-					return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-				}
-
-				var user = getUserinfo();
-				if (user == null)
-				{
-					code = new Msg_code(500, "登陆已失效,请重新登陆");
-					return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-				}
-				msg = pbstr(msg);
-				var data = new
-				{
-					ConnectionId = Context.ConnectionId,
-					UserId = user.LoginId,
-					Name = user.LoginName,
-					group = group,
-					Msg = msg
-				};
-				code = new Msg_code(200, "发送成功", data);
-				return Clients.All.SendAsync("ReceiveMessage" + group, code.ToJson());
-
-			}
-			catch (Exception)
-			{
-				code = new Msg_code(500, "发送失败");
-				return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-				//throw;
-			}
-
-
-		}
-
-		/// <summary>
-		/// 给指定用户发送信息
-		/// </summary>
-		/// <param name="user">conid</param>
-		/// <param name="msg">内容</param>
-		/// <returns></returns>
-		public Task SendToMessage(string conid, string msg)
-		{
-
-
-			Msg_code code = new Msg_code();
-			try
-			{
-
-				if (string.IsNullOrWhiteSpace(msg))
-				{
-					code = new Msg_code(500, "消息不能为空");
-					return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-				}
-
-				var user = getUserinfo();
-				if (user == null)
-				{
-					code = new Msg_code(500, "登陆已失效,请重新登陆");
-					return Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
-				}
-				msg = pbstr(msg);
-				var data = new
-				{
-					ConnectionId = Context.ConnectionId,
-					UserId = user.LoginId,
-					Name = user.LoginName,
-					Msg = msg
-				};
-				code = new Msg_code(200, "发送成功", data);
-				return Clients.All.SendAsync("ReceiveMsg", code.ToJson());
-
-			}
-			catch (Exception)
-			{
-				code = new Msg_code(500, "发送失败");
-				return Clients.Client(conid).SendAsync("ReturnConId", code.ToJson());
-				//throw;
-			}
-		}
-
-
-		/// <summary>
-		/// 给登陆id用户发送信息
-		/// </summary>
-		/// <param name="user">conid</param>
-		/// <param name="msg">内容</param>
-		/// <returns></returns>
-		public async Task SendLoginMessage(string LoginId, string msg)
-		{
-			Msg_code code = new Msg_code();
-			var userlist = Chat_User.userList.Where(t => t.LoginId == LoginId);
-			var user = getUserinfo();
-			if (user == null)
-			{
-				code = new Msg_code(500, "登陆已失效,请重新登陆");
-				await Clients.Client(Context.ConnectionId).SendAsync("ReturnConId", code.ToJson());
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
 				return;
 			}
 			msg = pbstr(msg);
@@ -198,38 +129,162 @@ namespace SignalRHub.Web
 				ConnectionId = Context.ConnectionId,
 				UserId = user.LoginId,
 				Name = user.LoginName,
-				Msg = msg
+				group = "0"
 			};
-			code = new Msg_code(200, "发送成功", data);
-			foreach (var item in userlist)
+			code = new Msg_code(200, msg, data);
+			await Clients.All.SendAsync("ReceiveMessage", code.ToJson());
+			return;
+		}
+
+		//发送消息--发送特定聊天室发信息
+		public async Task SendGroupMessage(string group, string msg)
+		{
+			Msg_code code = new Msg_code();
+			try
 			{
-				await Clients.Client(item.Connectionid).SendAsync("ReceiveMsg", code.ToJson());
+				var user = GetUserinfo();
+				if (user == null)
+				{
+					code = new Msg_code(500, "登陆已失效,请重新登陆");
+					await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+					return;
+				}
+				msg = pbstr(msg);
+				var data = new
+				{
+					ConnectionId = Context.ConnectionId,
+					UserId = user.LoginId,
+					Name = user.LoginName,
+					group = group
+				};
+				code = new Msg_code(200, msg, data);
+				var clients = GetUserList().Where(x => x.group == group).Select(x=>x.Connectionid).ToList();
+				await Clients.Clients(clients).SendAsync("ReceiveMessage", code.ToJson());
+				return;
+			}
+			catch (Exception)
+			{
+				code = new Msg_code(500, "发送失败");
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+				return;
 			}
 		}
 
-		public Task RemoveLogin(string ConnectionId)
+		/// <summary>
+		/// 给指定ConnectionId用户发送信息
+		/// </summary>
+		/// <param name="connectionId">connectionId</param>
+		/// <param name="msg">内容</param>
+		/// <returns></returns>
+		public async Task SendConnectionIdMessage(string connectionId, string msg)
+		{
+			Msg_code code = new Msg_code();
+			try
+			{
+				var user = GetUserinfo();
+				if (user == null)
+				{
+					code = new Msg_code(500, "登陆已失效,请重新登陆");
+					await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+					return;
+				}
+				msg = pbstr(msg);
+				var receiveuser = GetUserList().Where(x => x.Connectionid == connectionId).FirstOrDefault();
+				if (receiveuser == null)
+				{
+					code = new Msg_code(500, "对方已离线");
+					await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+					return;
+				}
+				var data = new
+				{
+					SendConnectionId = Context.ConnectionId,
+					UserId = user.LoginId,
+					SendName = user.LoginName,
+					ReceiveName = receiveuser?.LoginName,
+					ReceiveConnectionId = connectionId
+				};
+				code = new Msg_code(200, msg, data);
+				await Clients.Client(Context.ConnectionId).SendAsync("ReceiveMsg", code.ToJson());
+				await Clients.Client(connectionId).SendAsync("ReceiveMsg", code.ToJson());
+				return;
+			}
+			catch (Exception)
+			{
+				code = new Msg_code(500, "发送失败");
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+				return;
+			}
+		}
+
+		/// <summary>
+		/// 给UserId用户发送信息
+		/// </summary>
+		/// <param name="userId">userId</param>
+		/// <param name="msg">内容</param>
+		/// <returns></returns>
+		public async Task SendLoginMessage(string userId, string msg)
+		{
+			Msg_code code = new Msg_code();
+			try
+			{
+				var receiveuserinfo = Chat_User.userList.Where(t => t.LoginId == userId).FirstOrDefault();
+				if (receiveuserinfo == null)
+				{
+					code = new Msg_code(500, "对方已离线");
+					await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+					return;
+				}
+				var user = GetUserinfo();
+				if (user == null)
+				{
+					code = new Msg_code(500, "登陆已失效,请重新登陆");
+					await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+					return;
+				}
+				msg = pbstr(msg);
+				var receiveuser = GetUserList().Where(x => x.Connectionid == receiveuserinfo.Connectionid).FirstOrDefault();
+				var data = new
+				{
+					SendConnectionId = Context.ConnectionId,
+					UserId = user.LoginId,
+					SendName = user.LoginName,
+					ReceiveName = receiveuser?.LoginName,
+					ReceiveConnectionId = receiveuserinfo.Connectionid
+				};
+				code = new Msg_code(200, msg, data);
+				await Clients.Client(Context.ConnectionId).SendAsync("ReceiveMsg", code.ToJson());
+				await Clients.Client(receiveuserinfo.Connectionid).SendAsync("ReceiveMsg", code.ToJson());
+			}
+			catch (Exception)
+			{
+				code = new Msg_code(500, "发送失败");
+				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
+				return;
+			}
+		}
+
+		public async Task RemoveLogin(string ConnectionId)
 		{
 			Chat_User.RemoveUser(ConnectionId);
-			return Clients.All.SendAsync("Closed", ConnectionId);
+			await Clients.All.SendAsync("Closed", ConnectionId);
+			return;
 		}
 
 		//重写上线监控
 		public override async Task OnConnectedAsync()
 		{
 			var ConnectionId = Context.ConnectionId;
-
 			Msg_code code = new Msg_code(202, ConnectionId + "链接成功", ConnectionId);
 			await Clients.All.SendAsync("SystemNotice", code.ToJson());
+			return;
 		}
-
 
 		//重写下线监控
 		public override async Task OnDisconnectedAsync(Exception? exception)
 		{
-
 			var ConnectionId = Context.ConnectionId;
-
-			var user = getUserinfo();
+			var user = GetUserinfo();
 			if (user == null)
 			{
 				Msg_code code = new Msg_code(203, ConnectionId + "下线", ConnectionId);
@@ -240,11 +295,9 @@ namespace SignalRHub.Web
 				Msg_code code = new Msg_code(203, user.LoginName + "下线", user);
 				await Clients.All.SendAsync("SystemNotice", code.ToJson());
 			}
-
 			Chat_User.RemoveUser(ConnectionId);
-
+			return;
 		}
-
 
 		private string pbstr(string str)
 		{
@@ -252,33 +305,38 @@ namespace SignalRHub.Web
 			if (isbll.Count > 0)
 			{
 				foreach (var item in isbll)
-				{
 					str = str.Replace(item, "**");
-				}
 			}
 			return str;
-
 		}
 
-
-		private U_Info getUserinfo()
+		private U_Info GetUserinfo()
 		{
 			var user = Chat_User.userList.Where(t => t.Connectionid == Context.ConnectionId).FirstOrDefault();
 			return user;
 		}
+
+		private  List<U_Info>  GetUserList()
+		{
+			var user = Chat_User.userList.ToList();
+			return user;
+		}
+
 	}
 	public class Msg_code
 	{
-		public Msg_code(int _code = 0, string _Msg = "", object _data = null)
+		public Msg_code(int _code = 0, string _Msg = "", object _data = null, List<U_Info> _uInfo =null)
 		{
 			code = _code;
 			Msg = _Msg;
 			data = _data;
+			uInfo = _uInfo;
 		}
 
 		public int code = 0;
 		public string Msg = "";
 		public object data = null;
+		public List<U_Info> uInfo = null;
 	}
 	public static class JsonExtension
 	{
