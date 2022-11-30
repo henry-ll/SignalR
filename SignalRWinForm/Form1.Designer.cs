@@ -28,16 +28,13 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.components = new System.ComponentModel.Container();
 			this.txtLoginId = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.txtLoginResult = new System.Windows.Forms.TextBox();
 			this.btnLogin = new System.Windows.Forms.Button();
 			this.label3 = new System.Windows.Forms.Label();
-			this.txtConnectionId = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
-			this.txtUserId = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.txtMessage = new System.Windows.Forms.TextBox();
 			this.button2 = new System.Windows.Forms.Button();
@@ -52,7 +49,7 @@
 			this.btnChatRoomSend = new System.Windows.Forms.Button();
 			this.cmbConnectionId = new System.Windows.Forms.ComboBox();
 			this.cmbUserId = new System.Windows.Forms.ComboBox();
-			this.timer1 = new System.Windows.Forms.Timer(this.components);
+			this.btnGetOnline = new System.Windows.Forms.Button();
 			this.SuspendLayout();
 			// 
 			// txtLoginId
@@ -86,6 +83,7 @@
 			this.txtLoginResult.Location = new System.Drawing.Point(71, 52);
 			this.txtLoginResult.Multiline = true;
 			this.txtLoginResult.Name = "txtLoginResult";
+			this.txtLoginResult.ScrollBars = System.Windows.Forms.ScrollBars.Both;
 			this.txtLoginResult.Size = new System.Drawing.Size(899, 45);
 			this.txtLoginResult.TabIndex = 2;
 			// 
@@ -102,34 +100,20 @@
 			// label3
 			// 
 			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(6, 118);
+			this.label3.Location = new System.Drawing.Point(4, 117);
 			this.label3.Name = "label3";
 			this.label3.Size = new System.Drawing.Size(85, 17);
 			this.label3.TabIndex = 6;
 			this.label3.Text = "ConnectionId";
 			// 
-			// txtConnectionId
-			// 
-			this.txtConnectionId.Location = new System.Drawing.Point(95, 64);
-			this.txtConnectionId.Name = "txtConnectionId";
-			this.txtConnectionId.Size = new System.Drawing.Size(259, 23);
-			this.txtConnectionId.TabIndex = 5;
-			// 
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(437, 119);
+			this.label4.Location = new System.Drawing.Point(377, 118);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(44, 17);
 			this.label4.TabIndex = 8;
 			this.label4.Text = "用户Id";
-			// 
-			// txtUserId
-			// 
-			this.txtUserId.Location = new System.Drawing.Point(437, 64);
-			this.txtUserId.Name = "txtUserId";
-			this.txtUserId.Size = new System.Drawing.Size(259, 23);
-			this.txtUserId.TabIndex = 7;
 			// 
 			// label5
 			// 
@@ -246,30 +230,36 @@
 			// 
 			this.cmbConnectionId.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.cmbConnectionId.FormattingEnabled = true;
-			this.cmbConnectionId.Location = new System.Drawing.Point(95, 113);
+			this.cmbConnectionId.Location = new System.Drawing.Point(95, 114);
 			this.cmbConnectionId.Name = "cmbConnectionId";
-			this.cmbConnectionId.Size = new System.Drawing.Size(315, 25);
+			this.cmbConnectionId.Size = new System.Drawing.Size(259, 25);
 			this.cmbConnectionId.TabIndex = 21;
 			// 
 			// cmbUserId
 			// 
 			this.cmbUserId.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.cmbUserId.FormattingEnabled = true;
-			this.cmbUserId.Location = new System.Drawing.Point(487, 113);
+			this.cmbUserId.Location = new System.Drawing.Point(437, 114);
 			this.cmbUserId.Name = "cmbUserId";
-			this.cmbUserId.Size = new System.Drawing.Size(315, 25);
+			this.cmbUserId.Size = new System.Drawing.Size(259, 25);
 			this.cmbUserId.TabIndex = 22;
 			// 
-			// timer1
+			// btnGetOnline
 			// 
-			this.timer1.Interval = 1000;
-			this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+			this.btnGetOnline.Location = new System.Drawing.Point(793, 115);
+			this.btnGetOnline.Name = "btnGetOnline";
+			this.btnGetOnline.Size = new System.Drawing.Size(178, 23);
+			this.btnGetOnline.TabIndex = 23;
+			this.btnGetOnline.Text = "获取当前在线用户";
+			this.btnGetOnline.UseVisualStyleBackColor = true;
+			this.btnGetOnline.Click += new System.EventHandler(this.btnGetOnline_Click);
 			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(983, 531);
+			this.Controls.Add(this.btnGetOnline);
 			this.Controls.Add(this.cmbUserId);
 			this.Controls.Add(this.cmbConnectionId);
 			this.Controls.Add(this.btnChatRoomSend);
@@ -285,9 +275,7 @@
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.txtMessage);
 			this.Controls.Add(this.label4);
-			this.Controls.Add(this.txtUserId);
 			this.Controls.Add(this.label3);
-			this.Controls.Add(this.txtConnectionId);
 			this.Controls.Add(this.btnLogin);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.txtLoginResult);
@@ -297,6 +285,7 @@
 			this.MaximizeBox = false;
 			this.Name = "Form1";
 			this.Text = "SignalR版聊天室";
+			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
 			this.Load += new System.EventHandler(this.Form1_Load);
 			this.ResumeLayout(false);
 			this.PerformLayout();
@@ -311,9 +300,7 @@
 		private TextBox txtLoginResult;
 		private Button btnLogin;
 		private Label label3;
-		private TextBox txtConnectionId;
 		private Label label4;
-		private TextBox txtUserId;
 		private Label label5;
 		private TextBox txtMessage;
 		private Button button2;
@@ -328,6 +315,6 @@
 		private Button btnChatRoomSend;
 		private ComboBox cmbConnectionId;
 		private ComboBox cmbUserId;
-		private System.Windows.Forms.Timer timer1;
+		private Button btnGetOnline;
 	}
 }

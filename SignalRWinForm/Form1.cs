@@ -5,6 +5,7 @@ using SignalRHub.Web;
 using SignalRHub;
 using Microsoft.VisualBasic.ApplicationServices;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Configuration;
 
 namespace SignalRWinForm
 {
@@ -22,9 +23,13 @@ namespace SignalRWinForm
 		private void Form1_Load(object sender, EventArgs e)
 		{
 			bindCbox();
-			this.txtLoginId.Text= Guid.NewGuid().ToString();
-			//connection = new HubConnectionBuilder().WithUrl("https://localhost:5001/WebChatHub").Build();
-			connection = new HubConnectionBuilder().WithUrl("https://localhost:7121/WebChatHub").Build();
+			this.txtLoginId.Text = Guid.NewGuid().ToString();
+#if DEBUG
+			var url = ConfigurationManager.AppSettings["connectionDebug"].ToString();
+#else
+			var url = ConfigurationManager.AppSettings["connectionRelease"].ToString();
+#endif
+			connection = new HubConnectionBuilder().WithUrl(url).Build();
 
 			#region 事件监听
 
@@ -59,7 +64,7 @@ namespace SignalRWinForm
 				var messageType = "【未知】";
 				var result = JsonConvert.DeserializeObject<Msg_code>(message);
 				dynamic data = result.data;
-				if (data.group=="0")
+				if (data.group == "0")
 					messageType = $"【聊天室| 全体消息】 ";
 				else
 					messageType = $"【聊天室（{data.group}）】 ";
@@ -110,7 +115,7 @@ namespace SignalRWinForm
 				var messageType = "【私聊】";
 				this.Invoke(() =>
 				{
-					listBox1.Items.Add(messageType+ data.SendName+"  对  "+ data.ReceiveName +"说："+result.Msg);
+					listBox1.Items.Add(messageType + data.SendName + "  对  " + data.ReceiveName + "说：" + result.Msg);
 				});
 			});
 			#endregion
@@ -134,13 +139,14 @@ namespace SignalRWinForm
 				{
 					cmbConnectionId.DataSource = result.uInfo;
 					cmbConnectionId.ValueMember = "ConnectionId";
-					cmbConnectionId.DisplayMember = "LoginName";
+					cmbConnectionId.DisplayMember = "LoginCompose";
 					cmbUserId.DataSource = result.uInfo;
 					cmbUserId.ValueMember = "LoginId";
-					cmbUserId.DisplayMember = "LoginName";
+					cmbUserId.DisplayMember = "ConnectionCompose";
 				});
 			});
 			#endregion
+
 			#endregion
 		}
 		/// <summary>
@@ -194,6 +200,25 @@ namespace SignalRWinForm
 				MessageBox.Show(ex.Message);
 			}
 		}
+		private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+		{
+			try
+			{
+				IsDisConnect = true;
+				var comboBox = (ComboBoxData)comboBox1.SelectedItem;
+				connection.InvokeAsync("LoginDisConnect", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text).Wait();
+				connection.StopAsync();
+				connection.DisposeAsync();
+				this.btnLogin.Enabled = true;
+				this.comboBox1.Enabled = true;
+				this.txtLoginId.Enabled = true;
+				this.txtLoginName.Enabled = true;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
+		}
 		/// <summary>
 		/// 给ConnectionId发消息 点击事件
 		/// </summary>
@@ -203,7 +228,8 @@ namespace SignalRWinForm
 		{
 			try
 			{
-				connection.InvokeAsync("SendConnectionIdMessage", txtConnectionId.Text, txtMessage.Text).Wait();
+				var comboBox = (U_Info)cmbConnectionId.SelectedItem;
+				connection.InvokeAsync("SendConnectionIdMessage", comboBox.Connectionid, txtMessage.Text).Wait();
 			}
 			catch (Exception ex)
 			{
@@ -220,7 +246,8 @@ namespace SignalRWinForm
 			try
 			{
 				#region 用户id发送个人信息
-				connection.InvokeAsync("SendLoginMessage", txtUserId.Text, txtMessage.Text);
+				var comboBox = (U_Info)cmbUserId.SelectedItem;
+				connection.InvokeAsync("SendLoginMessage", comboBox.LoginId, txtMessage.Text);
 				#endregion
 			}
 			catch (Exception ex)
@@ -242,7 +269,7 @@ namespace SignalRWinForm
 					MessageBox.Show("请输入消息内容！");
 					return;
 				}
-				connection.InvokeAsync("SendAllMessage",this.txtMessage.Text).Wait();
+				connection.InvokeAsync("SendAllMessage", this.txtMessage.Text).Wait();
 			}
 			catch (Exception ex)
 			{
@@ -271,10 +298,16 @@ namespace SignalRWinForm
 				listBox1.Items.Add(ex.Message);
 			}
 		}
-		private void timer1_Tick(object sender, EventArgs e)
+		/// <summary>
+		/// 获取在线用户
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void btnGetOnline_Click(object sender, EventArgs e)
 		{
 			connection.InvokeAsync("GetOnlineUser").Wait();
 		}
+
 		#endregion
 
 		#region 方法
@@ -301,6 +334,7 @@ namespace SignalRWinForm
 		public string Id { get; set; }
 		public string Name { get; set; }
 	}
+
 	public class User
 	{
 		public string ConnectionId { get; set; }

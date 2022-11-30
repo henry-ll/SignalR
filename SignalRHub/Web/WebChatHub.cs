@@ -24,16 +24,33 @@ namespace SignalRHub.Web
 		/// <returns></returns>
 		public async Task GetOnlineUser()
 		{
-			Msg_code code = new Msg_code();
+			Msg_Code code = new Msg_Code();
 			try
 			{
-				code = new Msg_code(205, "获取成功", null, Chat_User.userList);
+				List<ResInfo> infos = new List<ResInfo>();
+				var list = Chat_User.GetUserList();
+				if (list!=null && list.Count>0)
+				{
+					foreach (var item in list)
+					{
+						ResInfo info = new ResInfo();
+						info.OnlineId = item.OnlineId;
+						info.LoginId = item.LoginId;
+						info.LoginName = item.LoginName;
+						info.Connectionid = item.Connectionid;
+						info.group = item.group;
+						info.LoginCompose = item.LoginId + "  |  " + item.LoginName;
+						info.ConnectionCompose = item.Connectionid + "  |  " + item.LoginName;
+						infos.Add(info);
+					}
+				}
+				code = new Msg_Code(205, "获取成功", null, infos);
 				await Clients.All.SendAsync("OnlineUser", code.ToJson());
 				return;
 			}
 			catch (Exception ex)
 			{
-				code = new Msg_code(500, "获取在线用户列表失败");
+				code = new Msg_Code(500, "获取在线用户列表失败");
 				await Clients.Client(Context.ConnectionId).SendAsync("OnlineUser", code.ToJson());
 				return;
 			}
@@ -93,7 +110,7 @@ namespace SignalRHub.Web
 					Name = username,
 					group = group,
 				};
-				code = new Msg_code(205, "登陆成功", data, Chat_User.userList);
+				code = new Msg_code(205, "登陆成功", data, Chat_User.GetUserList());
 				await Clients.Client(Context.ConnectionId).SendAsync("StateMessage", code.ToJson());
 
 				code = new Msg_code(201, $"加入聊天室（{group}）", data);
@@ -228,7 +245,7 @@ namespace SignalRHub.Web
 			Msg_code code = new Msg_code();
 			try
 			{
-				var receiveuserinfo = Chat_User.userList.Where(t => t.LoginId == userId).FirstOrDefault();
+				var receiveuserinfo = Chat_User.GetUserList().Where(t => t.LoginId == userId).FirstOrDefault();
 				if (receiveuserinfo == null)
 				{
 					code = new Msg_code(500, "对方已离线");
@@ -312,13 +329,13 @@ namespace SignalRHub.Web
 
 		private U_Info GetUserinfo()
 		{
-			var user = Chat_User.userList.Where(t => t.Connectionid == Context.ConnectionId).FirstOrDefault();
+			var user = Chat_User.GetUserList().Where(t => t.Connectionid == Context.ConnectionId).FirstOrDefault();
 			return user;
 		}
 
 		private  List<U_Info>  GetUserList()
 		{
-			var user = Chat_User.userList.ToList();
+			var user = Chat_User.GetUserList().ToList();
 			return user;
 		}
 
@@ -337,6 +354,21 @@ namespace SignalRHub.Web
 		public string Msg = "";
 		public object data = null;
 		public List<U_Info> uInfo = null;
+	}
+	public class Msg_Code
+	{
+		public Msg_Code(int _code = 0, string _Msg = "", object _data = null, List<ResInfo> _uInfo = null)
+		{
+			code = _code;
+			Msg = _Msg;
+			data = _data;
+			uInfo = _uInfo;
+		}
+
+		public int code = 0;
+		public string Msg = "";
+		public object data = null;
+		public List<ResInfo> uInfo = null;
 	}
 	public static class JsonExtension
 	{
