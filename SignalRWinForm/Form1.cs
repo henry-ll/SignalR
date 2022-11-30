@@ -197,7 +197,7 @@ namespace SignalRWinForm
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.Message);
+				MessageBox.Show(ex.Message);   
 			}
 		}
 		private void Form1_FormClosed(object sender, FormClosedEventArgs e)
