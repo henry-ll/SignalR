@@ -22,132 +22,138 @@ namespace SignalRWinForm
 		#region 事件绑定
 		private void Form1_Load(object sender, EventArgs e)
 		{
-			bindCbox();
-			this.txtLoginId.Text = Guid.NewGuid().ToString();
+			try
+			{
+				bindCbox();
+				this.txtLoginId.Text = Guid.NewGuid().ToString();
 #if DEBUG
-			var url = ConfigurationManager.AppSettings["connectionDebug"].ToString();
+				var url = ConfigurationManager.AppSettings["connectionDebug"].ToString();
 #else
 			var url = ConfigurationManager.AppSettings["connectionRelease"].ToString();
 #endif
-			connection = new HubConnectionBuilder().WithUrl(url).Build();
+				connection = new HubConnectionBuilder().WithUrl(url).Build();
 
-			#region 事件监听
+				#region 事件监听
 
-			#region 登陆重试
-			connection.Closed += async (error) =>
-			{
-				await Task.Delay(new Random().Next(0, 5) * 1000);
-				if (!IsDisConnect)
+				#region 登陆重试
+				connection.Closed += async (error) =>
 				{
-					await connection.StartAsync();
-					try
+					await Task.Delay(new Random().Next(0, 5) * 1000);
+					if (!IsDisConnect)
 					{
-						var comboBox = (ComboBoxData)comboBox1.SelectedItem;
-						await connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
-						this.Invoke(() =>
+						await connection.StartAsync();
+						try
 						{
-							listBox1.Items.Add("【状态】 重新连接中...");
-						});
+							var comboBox = (ComboBoxData)comboBox1.SelectedItem;
+							await connection.InvokeAsync("LoginBind", comboBox.Id, this.txtLoginId.Text, this.txtLoginName.Text);
+							this.Invoke(() =>
+							{
+								listBox1.Items.Add("【状态】 重新连接中...");
+							});
+						}
+						catch (Exception ex)
+						{
+							MessageBox.Show(ex.Message);
+						}
 					}
-					catch (Exception ex)
+				};
+				#endregion
+
+				#region 聊天室消息 监听
+				//监听 聊天室 消息
+				connection.On<string>("ReceiveMessage", (message) =>
+				{
+					var messageType = "【未知】";
+					var result = JsonConvert.DeserializeObject<Msg_code>(message);
+					dynamic data = result.data;
+					if (data.group == "0")
+						messageType = $"【聊天室| 全体消息】 ";
+					else
+						messageType = $"【聊天室（{data.group}）】 ";
+					this.Invoke(() =>
 					{
-						MessageBox.Show(ex.Message);
-					}
-				}
-			};
-			#endregion
-
-			#region 聊天室消息 监听
-			//监听 聊天室 消息
-			connection.On<string>("ReceiveMessage", (message) =>
-			{
-				var messageType = "【未知】";
-				var result = JsonConvert.DeserializeObject<Msg_code>(message);
-				dynamic data = result.data;
-				if (data.group == "0")
-					messageType = $"【聊天室| 全体消息】 ";
-				else
-					messageType = $"【聊天室（{data.group}）】 ";
-				this.Invoke(() =>
-				{
-					listBox1.Items.Add(messageType + data.Name + $"：{result.Msg}");
+						listBox1.Items.Add(messageType + data.Name + $"：{result.Msg}");
+					});
 				});
-			});
-			#endregion
+				#endregion
 
-			#region 【状态】消息 监听
-			connection.On<string>("StateMessage", (message) =>
-			{
-				var result = JsonConvert.DeserializeObject<Msg_code>(message);
-				dynamic data = result.data;
-				this.Invoke(() =>
+				#region 【状态】消息 监听
+				connection.On<string>("StateMessage", (message) =>
 				{
-					txtLoginResult.Text = message;
+					var result = JsonConvert.DeserializeObject<Msg_code>(message);
+					dynamic data = result.data;
+					this.Invoke(() =>
+					{
+						txtLoginResult.Text = message;
 
-					if (result.code == 205)//登录
+						if (result.code == 205)//登录
+						{
+							cmbConnectionId.DataSource = result.uInfo;
+							cmbConnectionId.ValueMember = "ConnectionId";
+							cmbConnectionId.DisplayMember = "LoginName";
+							cmbUserId.DataSource = result.uInfo;
+							cmbUserId.ValueMember = "LoginId";
+							cmbUserId.DisplayMember = "LoginName";
+						}
+						else if (result.code == 206)//注销登录
+						{
+							cmbConnectionId.DataSource = result.uInfo;
+							cmbConnectionId.ValueMember = "ConnectionId";
+							cmbConnectionId.DisplayMember = "LoginName";
+							cmbUserId.DataSource = result.uInfo;
+							cmbUserId.ValueMember = "LoginId";
+							cmbUserId.DisplayMember = "LoginName";
+						}
+						listBox1.Items.Add("【状态】 " + result.Msg);
+					});
+				});
+				#endregion
+
+				#region ConnectionId个人信息 监听
+				connection.On<string>("ReceiveMsg", (message) =>
+				{
+					var result = JsonConvert.DeserializeObject<Msg_code>(message);
+					dynamic data = result.data;
+					var messageType = "【私聊】";
+					this.Invoke(() =>
+					{
+						listBox1.Items.Add(messageType + data.SendName + "  对  " + data.ReceiveName + "说：" + result.Msg);
+					});
+				});
+				#endregion
+
+				#region 接收退出信息
+				connection.On<string>("Closed", (ConnectionId) =>
+				{
+					this.Invoke(() =>
+					{
+						listBox1.Items.Add(ConnectionId + "已退出");
+					});
+				});
+				#endregion
+
+
+				#region 在线用户 监听
+				connection.On<string>("OnlineUser", (message) =>
+				{
+					var result = JsonConvert.DeserializeObject<Msg_code>(message);
+					this.Invoke(() =>
 					{
 						cmbConnectionId.DataSource = result.uInfo;
 						cmbConnectionId.ValueMember = "ConnectionId";
-						cmbConnectionId.DisplayMember = "LoginName";
+						cmbConnectionId.DisplayMember = "LoginCompose";
 						cmbUserId.DataSource = result.uInfo;
 						cmbUserId.ValueMember = "LoginId";
-						cmbUserId.DisplayMember = "LoginName";
-					}
-					else if (result.code == 206)//注销登录
-					{
-						cmbConnectionId.DataSource = result.uInfo;
-						cmbConnectionId.ValueMember = "ConnectionId";
-						cmbConnectionId.DisplayMember = "LoginName";
-						cmbUserId.DataSource = result.uInfo;
-						cmbUserId.ValueMember = "LoginId";
-						cmbUserId.DisplayMember = "LoginName";
-					}
-					listBox1.Items.Add("【状态】 " + result.Msg);
+						cmbUserId.DisplayMember = "ConnectionCompose";
+					});
 				});
-			});
-			#endregion
+				#endregion
 
-			#region ConnectionId个人信息 监听
-			connection.On<string>("ReceiveMsg", (message) =>
+				#endregion
+			}
+			catch 
 			{
-				var result = JsonConvert.DeserializeObject<Msg_code>(message);
-				dynamic data = result.data;
-				var messageType = "【私聊】";
-				this.Invoke(() =>
-				{
-					listBox1.Items.Add(messageType + data.SendName + "  对  " + data.ReceiveName + "说：" + result.Msg);
-				});
-			});
-			#endregion
-
-			#region 接收退出信息
-			connection.On<string>("Closed", (ConnectionId) =>
-			{
-				this.Invoke(() =>
-				{
-					listBox1.Items.Add(ConnectionId + "已退出");
-				});
-			});
-			#endregion
-
-
-			#region 在线用户 监听
-			connection.On<string>("OnlineUser", (message) =>
-			{
-				var result = JsonConvert.DeserializeObject<Msg_code>(message);
-				this.Invoke(() =>
-				{
-					cmbConnectionId.DataSource = result.uInfo;
-					cmbConnectionId.ValueMember = "ConnectionId";
-					cmbConnectionId.DisplayMember = "LoginCompose";
-					cmbUserId.DataSource = result.uInfo;
-					cmbUserId.ValueMember = "LoginId";
-					cmbUserId.DisplayMember = "ConnectionCompose";
-				});
-			});
-			#endregion
-
-			#endregion
+			}
 		}
 		/// <summary>
 		/// 登录 点击事件
@@ -174,7 +180,7 @@ namespace SignalRWinForm
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.Message);
+				//MessageBox.Show(ex.Message);
 			}
 		}
 		/// <summary>
@@ -197,7 +203,7 @@ namespace SignalRWinForm
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.Message);   
+				//MessageBox.Show(ex.Message);   
 			}
 		}
 		private void Form1_FormClosed(object sender, FormClosedEventArgs e)
@@ -216,7 +222,7 @@ namespace SignalRWinForm
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.Message);
+				//MessageBox.Show(ex.Message);
 			}
 		}
 		/// <summary>
